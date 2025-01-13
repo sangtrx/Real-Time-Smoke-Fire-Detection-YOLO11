@@ -1,0 +1,19 @@
+"""
+Fire Detection System
+A real-time fire detection and notification system using computer vision.
+"""
+
+__version__ = '1.0.0'
+__author__ = 'Your Name'
+__email__ = 'your.email@example.com'
+
+from .config import Config, setup_logging
+from .fire_detector import FireDetector
+from .notification_service import NotificationService
+
+__all__ = [
+    'Config',
+    'setup_logging',
+    'FireDetector',
+    'NotificationService',
+]
