@@ -1,0 +1,9 @@
+.env
+*.log
+*.pyc
+__pycache__/
+detected_fires/*
+!detected_fires/README.md
+.pytest_cache/
+*.jpg
+*.png

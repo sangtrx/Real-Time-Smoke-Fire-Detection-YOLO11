@@ -1,0 +1,5 @@
+ultralytics
+cvzone
+smtplib
+email
+threading
