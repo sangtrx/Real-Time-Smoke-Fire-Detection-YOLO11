@@ -45,33 +45,31 @@ class FireDetector:
             results = self.model(frame)
             fire_detected = False
 
-            if len(results) > 0 and results[0].masks is not None:
-                boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
-                class_ids = results[0].boxes.cls.cpu().numpy().astype(int)
-                masks = results[0].masks.data.cpu().numpy()
+            if len(results) > 0:
+                boxes = results[0].boxes.xyxy.cpu(
+                ).numpy().astype(int)  # Bounding boxes
+                class_ids = results[0].boxes.cls.cpu(
+                ).numpy().astype(int)  # Class IDs
+                # Confidence scores
+                confidences = results[0].boxes.conf.cpu().numpy()
 
                 overlay = frame.copy()
 
-                for box, class_id, mask in zip(boxes, class_ids, masks):
+                for box, class_id, confidence in zip(boxes, class_ids, confidences):
                     class_name = self.names[class_id]
                     x1, y1, x2, y2 = box
 
-                    # Process mask
-                    binary_mask = (mask > 0.5).astype(np.uint8) * 255
-                    binary_mask = cv2.resize(
-                        binary_mask, (frame.shape[1], frame.shape[0]))
-
-                    # Draw detection
+                    # Draw bounding box
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    overlay[binary_mask > 0] = [
-                        0, 0, 255]  # Red color for fire
-                    cvzone.putTextRect(frame, f'{class_name}', (x1, y1), 1, 1)
+                    cvzone.putTextRect(frame, f'{class_name}: {
+                                       confidence:.2f}', (x1, y1), 1, 1)
 
+                    # Check if fire is detected
                     if 'fire' in class_name.lower():
                         fire_detected = True
 
-                # Blend the overlay
-                frame = cv2.addWeighted(overlay, 0.5, frame, 0.5, 0)
+                # Optionally, you can add overlay blending for bounding boxes
+                # frame = cv2.addWeighted(overlay, 0.5, frame, 0.5, 0)
 
             return frame, fire_detected
 
