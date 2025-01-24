@@ -7,3 +7,4 @@ detected_fires/*
 .pytest_cache/
 *.jpg
 *.png
+.vscode/
