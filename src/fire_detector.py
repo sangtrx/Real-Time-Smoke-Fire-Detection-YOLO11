@@ -6,8 +6,8 @@ import logging
 from pathlib import Path
 
 
-class FireDetector:
-    def __init__(self, model_path: Path, target_height: int = 500):
+class Detector:
+    def __init__(self, model_path: Path, target_height: int = 640):
         """
         Initialize the FireDetector with a YOLO model.
         
@@ -35,44 +35,48 @@ class FireDetector:
 
     def process_frame(self, frame):
         """
-        Process a video frame to detect fire.
+        Process a video frame to detect fire and smoke.
         
         Returns:
-            tuple: (processed_frame, fire_detected)
+            tuple: (processed_frame, detection: str)
         """
         try:
             frame = self.resize_frame(frame)
             results = self.model(frame)
-            fire_detected = False
+            detection = None
 
-            if len(results) > 0:
-                boxes = results[0].boxes.xyxy.cpu(
-                ).numpy().astype(int)  # Bounding boxes
-                class_ids = results[0].boxes.cls.cpu(
-                ).numpy().astype(int)  # Class IDs
-                # Confidence scores
+            if results and len(results[0].boxes) > 0:
+                boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
+                class_ids = results[0].boxes.cls.cpu().numpy().astype(int)
                 confidences = results[0].boxes.conf.cpu().numpy()
-
-                overlay = frame.copy()
 
                 for box, class_id, confidence in zip(boxes, class_ids, confidences):
                     class_name = self.names[class_id]
                     x1, y1, x2, y2 = box
 
-                    # Draw bounding box
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cvzone.putTextRect(frame, f'{class_name}: {
-                                       confidence:.2f}', (x1, y1), 1, 1)
+                    # Define color for different classes
+                    if "fire" == class_name.lower():
+                        color = (0, 0, 255)  # Red for fire
+                        detection = "Fire"
+                    elif "smoke" == class_name.lower():
+                        color = (255, 255, 255)  # white for smoke
+                        detection = "Smoke"
 
-                    # Check if fire is detected
-                    if 'fire' in class_name.lower():
-                        fire_detected = True
+                    # Draw bounding box and label
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+                    cvzone.putTextRect(
+                        frame,
+                        f"{class_name}: {confidence:.2f}",
+                        (x1, y1),
+                        scale=2,
+                        thickness=1,
+                        colorR=color,
+                        colorT=(255, 255, 255) if detection=="Fire" else (0, 0, 0),
+                        offset=5,
+                    )
 
-                # Optionally, you can add overlay blending for bounding boxes
-                # frame = cv2.addWeighted(overlay, 0.5, frame, 0.5, 0)
-
-            return frame, fire_detected
+            return frame, detection
 
         except Exception as e:
             self.logger.error(f"Error processing frame: {e}")
-            return frame, False
+            return frame, None

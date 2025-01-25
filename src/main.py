@@ -3,65 +3,87 @@ import logging
 import sys
 from pathlib import Path
 from config import Config, setup_logging
-from fire_detector import FireDetector
+from fire_detector import Detector
 from notification_service import NotificationService
+import time
 
 
 def main():
-    # Setup logging
+    # Initialize logging and configuration
     setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("Starting Fire Detection System")
+    logger.info("🚀 Starting Fire Detection System")
 
     try:
         # Validate configuration
         Config.validate()
+        logger.debug("Configuration validation successful")
 
         # Initialize services
         notification_service = NotificationService(Config)
+        logger.info("Initialized notification services")
+
+        # System self-test
         if not notification_service.send_test_message():
-            logger.error("Failed to send test message. Exiting...")
+            logger.critical("System self-test failed. Shutting down.")
             sys.exit(1)
+        logger.info("System self-test passed")
 
-        detector = FireDetector(Config.MODEL_PATH)
+        # Initialize detection components
+        detector = Detector(Config.MODEL_PATH)
+        logger.info(f"Loaded detection model: {Config.MODEL_PATH.name}")
 
-        # Open video capture
-        cap = cv2.VideoCapture('data/vid.mp4')
+        # Video processing setup
+        cap = cv2.VideoCapture(str(Config.VIDEO_SOURCE))
         if not cap.isOpened():
-            logger.error("Failed to open video source")
+            logger.error(f"Failed to open video source: {Config.VIDEO_SOURCE}")
             sys.exit(1)
+        logger.info(f"Processing video source: {Config.VIDEO_SOURCE}")
 
-        fire_alert_sent = False
-        logger.info("Starting video processing")
+        # State management
+        alert_cooldown = Config.ALERT_COOLDOWN  # Seconds between alerts
+        last_alert_time = 0
 
+        next_detection_to_report = "any"  # "Fire" or "Smoke"
+        # Main processing loop
         while True:
             ret, frame = cap.read()
             if not ret:
-                logger.info("Video processing complete")
+                logger.info("✅ Video processing completed")
                 break
 
-            # Process frame
-            processed_frame, fire_detected = detector.process_frame(frame)
+            # Detection pipeline
+            processed_frame, detection = detector.process_frame(
+                frame)  # detecting fire and smoke
 
-            # Handle fire detection
-            if fire_detected and not fire_alert_sent:
-                logger.info("Fire detected! Sending alert...")
-                if notification_service.send_whatsapp_alert(processed_frame):
-                    fire_alert_sent = True
+            # Alert logic with cooldown
+            if detection and (next_detection_to_report == "any" or detection == next_detection_to_report):
+                next_detection_to_report = "Smoke" if detection == "Fire" else "Fire"
+                current_time = time.time()
+                if (current_time - last_alert_time) > alert_cooldown:
+                    logger.warning(f"🐦‍🔥 {
+                                   detection} Detected! Initiating alert protocol")
+                    if notification_service.send_alert(processed_frame, detection):
+                        last_alert_time = current_time
+                        logger.info("✅ Alert sequence completed")
+                    else:
+                        logger.error("❌ Alert transmission failed")
 
-            # Display frame
-            cv2.imshow("Fire Detection", processed_frame)
+            # Display output
+            cv2.imshow("Fire Detection System", processed_frame)
             if cv2.waitKey(1) & 0xFF == ord("q"):
-                logger.info("Application terminated by user")
+                logger.info("🛑 User initiated shutdown")
                 break
 
     except Exception as e:
-        logger.error(f"Application error: {e}")
+        logger.critical(f"🚨 Critical system failure: {str(e)}")
         sys.exit(1)
     finally:
-        cap.release()
+        # Cleanup resources
+        if 'cap' in locals():
+            cap.release()
         cv2.destroyAllWindows()
-        logger.info("Application shutdown complete")
+        logger.info("🛑 System shutdown complete")
 
 
 if __name__ == "__main__":
