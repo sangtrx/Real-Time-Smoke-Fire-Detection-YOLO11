@@ -41,8 +41,11 @@ class Config:
     RECEIVER_WHATSAPP_NUMBER = os.getenv('RECEIVER_WHATSAPP_NUMBER')
     IMGUR_CLIENT_ID = os.getenv('IMGUR_CLIENT_ID')
 
-    MODEL_PATH = PROJECT_ROOT / 'models' / 'best.pt'
+    MODEL_PATH = PROJECT_ROOT / 'models' / 'kaggle developed models' / 'bests.pt'
+    VIDEO_SOURCE = PROJECT_ROOT / 'data' / 'fire_vid_wide.mp4'
     DETECTED_FIRES_DIR = PROJECT_ROOT / 'detected_fires'
+
+    ALERT_COOLDOWN = 45  # Seconds between alerts
 
     @classmethod
     def validate(cls):
@@ -57,3 +60,7 @@ class Config:
 
         # Create necessary directories
         cls.DETECTED_FIRES_DIR.mkdir(exist_ok=True)
+
+        if not cls.VIDEO_SOURCE.exists():
+            raise FileNotFoundError(
+                f"Video source missing: {cls.VIDEO_SOURCE}")
