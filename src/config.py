@@ -35,12 +35,10 @@ def setup_logging():
 
 
 class Config:
-    TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
-    TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
-    TWILIO_WHATSAPP_NUMBER = os.getenv('TWILIO_WHATSAPP_NUMBER')
     RECEIVER_WHATSAPP_NUMBER = os.getenv('RECEIVER_WHATSAPP_NUMBER')
     IMGUR_CLIENT_ID = os.getenv('IMGUR_CLIENT_ID')
 
+    PROJECT_ROOT = Path(__file__).parent.parent
     MODEL_PATH = PROJECT_ROOT / 'models' / 'kaggle developed models' / 'bests.pt'
     VIDEO_SOURCE = PROJECT_ROOT / 'data' / 'fire_vid_wide.mp4'
     DETECTED_FIRES_DIR = PROJECT_ROOT / 'detected_fires'
