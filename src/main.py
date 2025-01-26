@@ -53,21 +53,17 @@ def main():
                 break
 
             # Detection pipeline
-            processed_frame, detection = detector.process_frame(
-                frame)  # detecting fire and smoke
+            processed_frame, detection = detector.process_frame(frame)
 
             # Alert logic with cooldown
-            if detection and (next_detection_to_report == "any" or detection == next_detection_to_report):
-                next_detection_to_report = "Smoke" if detection == "Fire" else "Fire"
+            if detection:
                 current_time = time.time()
-                if (current_time - last_alert_time) > alert_cooldown:
-                    logger.warning(f"🐦‍🔥 {
-                                   detection} Detected! Initiating alert protocol")
-                    if notification_service.send_alert(processed_frame, detection):
-                        last_alert_time = current_time
-                        logger.info("✅ Alert sequence completed")
-                    else:
-                        logger.error("❌ Alert transmission failed")
+                if (next_detection_to_report == "any" or detection == next_detection_to_report) \
+                        and (current_time - last_alert_time) > alert_cooldown:
+                    logger.warning(f"🐦‍🔥 {detection} Detected! Queueing alert")
+                    notification_service.send_alert(processed_frame, detection)
+                    last_alert_time = current_time
+                    next_detection_to_report = "Smoke" if detection == "Fire" else "Fire"
 
             # Display output
             cv2.imshow("Fire Detection System", processed_frame)

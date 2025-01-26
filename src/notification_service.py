@@ -1,4 +1,5 @@
 # notification_service.py
+from concurrent.futures import ThreadPoolExecutor
 from cryptography.fernet import Fernet
 import json
 import os
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     def __init__(self, config):
         """Initialize notification services"""
+        self.executor = ThreadPoolExecutor(max_workers=2)
         self.config = config
         self.loop = asyncio.new_event_loop()
         self._init_services()
@@ -34,6 +36,7 @@ class NotificationService:
             self.base_url = "https://api.callmebot.com/whatsapp.php"
             logger.info("WhatsApp service initialized")
         else:
+            self.whatsapp_enabled = False
             logger.warning("WhatsApp alerts disabled: Missing credentials")
 
         # Telegram initialization
@@ -78,16 +81,30 @@ class NotificationService:
             return None
 
     def send_alert(self, frame, detection: str = "Fire") -> bool:
-        """Main alert dispatch method"""
+        """Non-blocking alert dispatch"""
         image_path = self.save_frame(frame)
-        success = False
-        # Send WhatsApp alert if enabled
+
+        # Submit to background thread
+        future = self.executor.submit(
+            self._send_alerts_async,
+            image_path,
+            detection
+        )
+
+        # Error logging callback
+        future.add_done_callback(
+            lambda f: f.exception() and logger.error(
+                f"Alert error: {f.exception()}")
+        )
+
+        return True  # Immediate success assumption
+
+    def _send_alerts_async(self, image_path, detection):
+        """Background alert processing"""
         if self.whatsapp_enabled:
-            success = self._send_whatsapp_alert(image_path, detection)
-        # Send Telegram alert if enabled
+            self._send_whatsapp_alert(image_path, detection)
         if self.telegram_bot:
-            success |= self._send_telegram_alert(image_path, detection)
-        return success
+            self._send_telegram_alert(image_path, detection)
 
     def _send_whatsapp_alert(self, image_path, detection):
         """Handle WhatsApp notification flow"""
@@ -109,7 +126,6 @@ class NotificationService:
             return True
         logger.warning(
             f"WhatsApp Alert Attempt failed: HTTP {response.status_code}")
-
         return False
 
     def _send_telegram_alert(self, image_path, detection):
@@ -158,19 +174,14 @@ class NotificationService:
         return False
 
     def __del__(self):
-        """Cleanup event loop"""
+        """Cleanup resources"""
+        self.executor.shutdown(wait=False)
         if hasattr(self, 'loop') and not self.loop.is_closed():
             self.loop.close()
 
 
 class FlareGuardBot:
     def __init__(self, token: str, default_chat_id: str = None):
-        """
-        Secure Telegram alert bot with encrypted storage
-        Args:
-            token: Telegram bot token
-            default_chat_id: Optional predefined chat ID
-        """
         self.logger = logging.getLogger(__name__)
         self.token = token
         self.default_chat_id = default_chat_id
