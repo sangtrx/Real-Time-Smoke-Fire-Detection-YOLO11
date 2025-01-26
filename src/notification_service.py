@@ -96,7 +96,7 @@ class NotificationService:
             logger.error("WhatsApp alert skipped: Image upload failed")
             return False
 
-        message = f"🚨 {detection} Detected!\nView: {image_url}"
+        message = f"🚨 {detection} Detected! View at {image_url}"
         encoded_msg = quote_plus(message)
         url = f"{self.base_url}?" \
             f"phone={os.getenv('RECEIVER_WHATSAPP_NUMBER')}&" \
@@ -127,9 +127,10 @@ class NotificationService:
 
     def send_test_message(self):
         """Verify system connectivity"""
+        success = False
         if self.whatsapp_enabled:
             test_msg = "🔧 System Test: Fire Detection System Operational"
-            success |= self._send_callmebot_message(test_msg)
+            success = self._send_callmebot_message(test_msg)
         if self.telegram_bot:
             try:
                 test_image = Path(PROJECT_ROOT, 'data', "test_image.png")
