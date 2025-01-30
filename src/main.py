@@ -34,7 +34,8 @@ def main():
         logger.info(f"Loaded detection model: {Config.MODEL_PATH.name}")
 
         # Video processing setup
-        cap = cv2.VideoCapture(str(Config.VIDEO_SOURCE))
+        # cap = cv2.VideoCapture(str(Config.VIDEO_SOURCE))
+        cap = cv2.VideoCapture(0) # for webcam
         if not cap.isOpened():
             logger.error(f"Failed to open video source: {Config.VIDEO_SOURCE}")
             sys.exit(1)
