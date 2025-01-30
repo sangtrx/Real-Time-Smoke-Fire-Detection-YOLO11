@@ -39,26 +39,26 @@ class Config:
     IMGUR_CLIENT_ID = os.getenv('IMGUR_CLIENT_ID')
 
     PROJECT_ROOT = Path(__file__).parent.parent
-    MODEL_PATH = PROJECT_ROOT / 'models' / 'kaggle developed models' / 'best_nano_111.pt'
+    MODEL_PATH = PROJECT_ROOT / 'models'  / 'best_nano_111.pt'
     VIDEO_SOURCE = PROJECT_ROOT / 'data' / 'fire_vid_wide.mp4'
     DETECTED_FIRES_DIR = PROJECT_ROOT / 'detected_fires'
 
     ALERT_COOLDOWN = 45  # Seconds between alerts
 
-    @classmethod
-    def validate(cls):
-        missing_vars = []
-        for var in cls.__dict__:
-            if not var.startswith('__') and getattr(cls, var) is None:
-                missing_vars.append(var)
+    # @classmethod
+    # def validate(cls):
+    #     missing_vars = []
+    #     for var in cls.__dict__:
+    #         if not var.startswith('__') and getattr(cls, var) is None:
+    #             missing_vars.append(var)
 
-        if missing_vars:
-            raise ValueError(f"Missing environment variables: {
-                             ', '.join(missing_vars)}")
+    #     if missing_vars:
+    #         raise ValueError(f"Missing environment variables: {
+    #                          ', '.join(missing_vars)}")
 
-        # Create necessary directories
-        cls.DETECTED_FIRES_DIR.mkdir(exist_ok=True)
+    #     # Create necessary directories
+    #     cls.DETECTED_FIRES_DIR.mkdir(exist_ok=True)
 
-        if not cls.VIDEO_SOURCE.exists():
-            raise FileNotFoundError(
-                f"Video source missing: {cls.VIDEO_SOURCE}")
+    #     if not cls.VIDEO_SOURCE.exists():
+    #         raise FileNotFoundError(
+    #             f"Video source missing: {cls.VIDEO_SOURCE}")

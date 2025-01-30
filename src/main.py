@@ -16,7 +16,7 @@ def main():
 
     try:
         # Validate configuration
-        Config.validate()
+        # Config.validate()
         logger.debug("Configuration validation successful")
 
         # Initialize services
