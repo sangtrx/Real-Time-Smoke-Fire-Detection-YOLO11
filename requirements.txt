@@ -1,5 +1,8 @@
 ultralytics
 cvzone
-smtplib
-email
-threading
+opencv-python
+telegram
+requests
+cryptography
+python-dotenv
+pytest
