@@ -2,7 +2,7 @@
 
 # Flare Guard: Real-Time Smoke & Fire Detection with YOLO11
 
-<img src="data/fire14.png" alt="Flare Guard Cover" width="800" style="max-width:100%; height:auto; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.1);"/>
+<img src="data/fire14.png" alt="Flare Guard Cover" width="700" style="border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.1);"/>
 
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?logo=telegram&logoColor=white)](https://github.com/sayedgamal99/Real-Time-Smoke-Fire-Detection-YOLO11)
@@ -57,18 +57,15 @@ Early fire detection is crucial for minimizing damage and saving lives. Traditio
 
 
 ## Video Demonstration
-
+<!-- 
 <div align="center">
 <img src="https://img.shields.io/badge/Live%20Demo-Watch%20Now-red?style=for-the-badge&logo=youtube" alt="Live Demo"/>
-</div>
+</div> -->
 
 <div align="center">
-<video width="800" style="border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.1);" controls>
-    <source src="data/video.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-</video>
+<img src='data/video.gif' width="700">
 
-<p><em>Click the image above to watch the full demonstration, including alert services.</em></p>
+<!-- <p><em>Click the image above to watch the full demonstration, including alert services.</em></p> -->
 </div>
 
 > The original video is generated from the cover image using GenAI *runwayml* tool.
