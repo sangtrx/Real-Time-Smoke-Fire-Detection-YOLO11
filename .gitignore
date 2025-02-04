@@ -5,8 +5,7 @@ __pycache__/
 detected_fires/*
 !detected_fires/README.md
 .pytest_cache/
-*.jpg
-*.png
 .vscode/
 for posting
 runs
+tests
