@@ -39,8 +39,8 @@ class Config:
     IMGUR_CLIENT_ID = os.getenv('IMGUR_CLIENT_ID')
 
     PROJECT_ROOT = Path(__file__).parent.parent
-    MODEL_PATH = PROJECT_ROOT / 'models'  / 'best_nano_111.pt'
-    VIDEO_SOURCE = PROJECT_ROOT / 'data' / 'fire_vid_wide.mp4'
+    MODEL_PATH = PROJECT_ROOT / 'models' / 'best_nano_111.pt'
+    VIDEO_SOURCE = PROJECT_ROOT / 'data' / 'police_car_fire_ccvt.mp4'
     DETECTED_FIRES_DIR = PROJECT_ROOT / 'detected_fires'
 
     ALERT_COOLDOWN = 45  # Seconds between alerts
