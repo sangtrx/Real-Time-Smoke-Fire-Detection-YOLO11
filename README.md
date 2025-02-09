@@ -5,7 +5,7 @@
 <img src="data/fire14.png" alt="Flare Guard Cover" width="700"/>
 
 ![Python](https://img.shields.io/badge/Python-3.7%2B-blue)
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?logo=telegram&logoColor=white)](https://github.com/sayedgamal99/Real-Time-Smoke-Fire-Detection-YOLO11)
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?logo=telegram&logoColor=white)](https://t.me/FlareGuard_bot)
 [![Ultralytics](https://img.shields.io/badge/Ultralytics-181717?logo=github&logoColor=white)](https://github.com/ultralytics/ultralytics)
 [![YOLOv11](https://img.shields.io/badge/YOLOv11-181717?logo=github&logoColor=white)](https://github.com/ultralytics/ultralytics)
 <a href="https://universe.roboflow.com/sayed-gamall/fire-smoke-detection-yolov11">
