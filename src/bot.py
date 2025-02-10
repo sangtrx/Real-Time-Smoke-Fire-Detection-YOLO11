@@ -3,8 +3,12 @@ import re
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from pathlib import Path
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).parent.parent
+ENV = PROJECT_ROOT / '.env'
+load_dotenv(ENV, override=True)
+
 
 # Pre-escaped message templates
 WELCOME_MESSAGE = """

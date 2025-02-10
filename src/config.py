@@ -3,13 +3,9 @@ from dotenv import load_dotenv
 import logging
 from pathlib import Path
 
-# Load environment variables
-load_dotenv()
-
-# Project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
-
-# Configure logging
+ENV = PROJECT_ROOT / '.env'
+load_dotenv(ENV, override=True)
 
 
 def setup_logging():
@@ -45,20 +41,20 @@ class Config:
 
     ALERT_COOLDOWN = 45  # Seconds between alerts
 
-    # @classmethod
-    # def validate(cls):
-    #     missing_vars = []
-    #     for var in cls.__dict__:
-    #         if not var.startswith('__') and getattr(cls, var) is None:
-    #             missing_vars.append(var)
+    @classmethod
+    def validate(cls):
+        missing_vars = []
+        for var in cls.__dict__:
+            if not var.startswith('__') and getattr(cls, var) is None:
+                missing_vars.append(var)
 
-    #     if missing_vars:
-    #         raise ValueError(f"Missing environment variables: {
-    #                          ', '.join(missing_vars)}")
+        if missing_vars:
+            raise ValueError(
+                f"Missing environment variables: {', '.join(missing_vars)}")
 
-    #     # Create necessary directories
-    #     cls.DETECTED_FIRES_DIR.mkdir(exist_ok=True)
+        # Create necessary directories
+        cls.DETECTED_FIRES_DIR.mkdir(exist_ok=True)
 
-    #     if not cls.VIDEO_SOURCE.exists():
-    #         raise FileNotFoundError(
-    #             f"Video source missing: {cls.VIDEO_SOURCE}")
+        if not cls.VIDEO_SOURCE.exists():
+            raise FileNotFoundError(
+                f"Video source missing: {cls.VIDEO_SOURCE}")

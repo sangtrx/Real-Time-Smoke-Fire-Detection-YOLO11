@@ -16,7 +16,8 @@ from urllib.parse import quote_plus
 
 # Setup environment and logging
 PROJECT_ROOT = Path(__file__).parent.parent
-load_dotenv()
+ENV = PROJECT_ROOT / '.env'
+load_dotenv(ENV, override=True)
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +26,9 @@ class NotificationService:
         """Initialize notification services"""
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.config = config
+        # Create new event loop for this instance
         self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self._init_services()
 
     def _init_services(self):
@@ -45,12 +48,14 @@ class NotificationService:
                 self.telegram_bot = FlareGuardBot(
                     token, os.getenv("TELEGRAM_CHAT_ID"))
                 # Run all async initialization together
-                self.loop.run_until_complete(self._init_telegram())
+                if not self.loop.is_running():
+                    self.loop.run_until_complete(self._init_telegram())
             except Exception as e:
                 logger.error(f"Telegram setup failed: {e}")
                 self.telegram_bot = None
         else:
             logger.info("Telegram alerts disabled: Missing token")
+
 
     async def _init_telegram(self):
         """Async initialization for Telegram"""
@@ -129,14 +134,16 @@ class NotificationService:
         return False
 
     def _send_telegram_alert(self, image_path, detection):
-        """Handle Telegram notification with loop reuse"""
+        """Handle Telegram notification with proper loop management"""
         try:
-            return self.loop.run_until_complete(
-                self.telegram_bot.send_alert(
-                    image_path=image_path,
-                    caption=f"🚨 {detection} Detected!"
+            if not self.loop.is_running():
+                asyncio.set_event_loop(self.loop)
+                return self.loop.run_until_complete(
+                    self.telegram_bot.send_alert(
+                        image_path=image_path,
+                        caption=f"🚨 {detection} Detected!"
+                    )
                 )
-            )
         except Exception as e:
             logger.error(f"Telegram alert failed: {str(e)}")
             return False
@@ -173,11 +180,23 @@ class NotificationService:
             f"WhatsApp Alert Attempt failed: HTTP {response.status_code}")
         return False
 
+    def cleanup(self):
+        """Proper cleanup of resources"""
+        try:
+            self.executor.shutdown(wait=True)
+            if hasattr(self, 'loop') and not self.loop.is_closed():
+                # Cancel all pending tasks
+                for task in asyncio.all_tasks(self.loop):
+                    task.cancel()
+                # Run loop one final time to complete cancellation
+                self.loop.run_until_complete(asyncio.gather(*asyncio.all_tasks(self.loop), return_exceptions=True))
+                self.loop.close()
+        except Exception as e:
+            logger.error(f"Cleanup error: {str(e)}")
+
     def __del__(self):
-        """Cleanup resources"""
-        self.executor.shutdown(wait=False)
-        if hasattr(self, 'loop') and not self.loop.is_closed():
-            self.loop.close()
+        """Ensure cleanup is called"""
+        self.cleanup()
 
 
 class FlareGuardBot:
@@ -274,15 +293,15 @@ class FlareGuardBot:
                             break
                         except telegram.error.TimedOut:
                             await asyncio.sleep(2 ** attempt)
-                            self.logger.warning(f"Timeout sending to {
-                                                chat_id}, retry {attempt+1}/3")
+                            self.logger.warning(
+                                f"Timeout sending to {chat_id}, retry {attempt+1}/3")
                         except telegram.error.NetworkError:
                             await asyncio.sleep(5)
-                            self.logger.warning(f"Network error with {
-                                                chat_id}, retry {attempt+1}/3")
+                            self.logger.warning(
+                                f"Network error with {chat_id}, retry {attempt+1}/3")
                         except Exception as e:
-                            self.logger.error(f"Failed to send to {
-                                              chat_id}: {str(e)}")
+                            self.logger.error(
+                                f"Failed to send to {chat_id}: {str(e)}")
                             break
         except Exception as e:
             self.logger.error(f"Telegram error: {str(e)}")
