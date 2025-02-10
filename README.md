@@ -55,18 +55,23 @@ Early fire detection is crucial for minimizing damage and saving lives. Traditio
 
 ## Video Demonstration
 
-<!--
-<div align="center">
-<img src="https://img.shields.io/badge/Live%20Demo-Watch%20Now-red?style=for-the-badge&logo=youtube" alt="Live Demo"/>
-</div> -->
 
 <div align="center">
-<img src='data/video.gif' width="700">
 
-<!-- <p><em>Click the image above to watch the full demonstration, including alert services.</em></p> -->
+  <video width="700" src="https://github.com/user-attachments/assets/d4059264-5953-45d2-8464-b5c61e9a0caf"/>
+</div>
+<div align="center">
+     
+   ### 🔥 Fire Detection System in Action  
+  This video demonstrates the system detecting fire immediately upon occurrence.  
+  Alerts are sent instantly to **Telegram** and **WhatsApp**, including an attached image.  
+  Thanks to **multithreading**, the system continues running without interruption.
+  
 </div>
 
-> The original video is generated from the cover image using GenAI _runwayml_ tool.
+
+
+
 
 ## Dataset
 
