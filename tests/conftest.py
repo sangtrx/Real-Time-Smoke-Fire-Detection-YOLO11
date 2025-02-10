@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from pathlib import Path
 from src.config import Config, setup_logging
-from src.fire_detector import FireDetector
+from src.fire_detector import Detector
 from src.notification_service import NotificationService
 
 
@@ -24,7 +24,7 @@ def sample_frame():
 @pytest.fixture
 def fire_detector():
     """Create FireDetector instance"""
-    return FireDetector(Config.MODEL_PATH)
+    return Detector(Config.MODEL_PATH)
 
 
 @pytest.fixture

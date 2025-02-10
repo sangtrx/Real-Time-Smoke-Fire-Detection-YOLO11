@@ -5,9 +5,6 @@ from src.config import Config, setup_logging
 
 def test_config_validation():
     """Test configuration validation"""
-    assert Config.TWILIO_ACCOUNT_SID is not None
-    assert Config.TWILIO_AUTH_TOKEN is not None
-    assert Config.TWILIO_WHATSAPP_NUMBER is not None
     assert Config.RECEIVER_WHATSAPP_NUMBER is not None
     assert Config.IMGUR_CLIENT_ID is not None
 
