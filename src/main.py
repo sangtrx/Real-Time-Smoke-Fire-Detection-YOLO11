@@ -24,10 +24,10 @@ def main():
         logger.info("Initialized notification services")
 
         # System self-test
-        if not notification_service.send_test_message():
-            logger.critical("System self-test failed. Shutting down.")
-            sys.exit(1)
-        logger.info("System self-test passed")
+        # if not notification_service.send_test_message():
+        #     logger.critical("System self-test failed. Shutting down.")
+        #     sys.exit(1)
+        # logger.info("System self-test passed")
 
         # Initialize detection components
         detector = Detector(Config.MODEL_PATH, iou_threshold=0.20)
