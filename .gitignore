@@ -8,4 +8,4 @@ detected_fires/*
 .vscode/
 for posting
 runs
-tests
+tests/test_data
