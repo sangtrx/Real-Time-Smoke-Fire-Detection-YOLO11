@@ -10,3 +10,8 @@ for posting
 runs
 tests/test_data
 tologo.py
+*.log
+logs/
+.env
+src/sysdata.bin
+
