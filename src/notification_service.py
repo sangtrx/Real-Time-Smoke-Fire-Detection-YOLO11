@@ -210,7 +210,7 @@ class FlareGuardBot:
         self.bot = telegram.Bot(token=self.token)
         self._init_crypto()
         self.storage_file = Path(__file__).parent / "sysdata.bin"
-        self.update_file = Path(__file__).parent / "last_update.txt"
+        self.update_file = Path(__file__).parent / "last_update.bin" 
         self.chat_ids = self._load_chat_ids()
 
     async def initialize(self):
@@ -247,7 +247,6 @@ class FlareGuardBot:
         try:
             with FileLock(str(self.storage_file) + ".lock"):
                 encrypted = self.cipher_suite.encrypt(
-                    # Remove duplicates
                     json.dumps(list(set(self.chat_ids))).encode()
                 )
                 with open(self.storage_file, "wb") as f:
@@ -257,20 +256,27 @@ class FlareGuardBot:
             self.logger.error(f"Failed to save chat IDs: {e}")
 
     def _get_last_update_id(self):
-        """Get the ID of the last processed update"""
+        """Get the encrypted ID of the last processed update"""
         try:
             if self.update_file.exists():
-                with open(self.update_file, "r") as f:
-                    return int(f.read().strip())
+                with FileLock(str(self.update_file) + ".lock"):
+                    self.update_file.chmod(0o600)
+                    with open(self.update_file, "rb") as f:
+                        encrypted_data = f.read()
+                        decrypted = self.cipher_suite.decrypt(encrypted_data)
+                        return int(decrypted.decode())
         except Exception as e:
             self.logger.error(f"Failed to read last update ID: {e}")
         return 0
 
     def _save_last_update_id(self, update_id: int):
-        """Save the ID of the last processed update"""
+        """Save the encrypted ID of the last processed update"""
         try:
-            with open(self.update_file, "w") as f:
-                f.write(str(update_id))
+            with FileLock(str(self.update_file) + ".lock"):
+                encrypted = self.cipher_suite.encrypt(str(update_id).encode())
+                with open(self.update_file, "wb") as f:
+                    f.write(encrypted)
+                self.update_file.chmod(0o600)
         except Exception as e:
             self.logger.error(f"Failed to save last update ID: {e}")
 
