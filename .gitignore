@@ -1,5 +1,4 @@
 .env
-*.log
 *.pyc
 __pycache__/
 detected_fires/*
@@ -12,6 +11,4 @@ tests/test_data
 tologo.py
 *.log
 logs/
-.env
-src/sysdata.bin
-
+*.bin
