@@ -13,6 +13,9 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
+from filelock import FileLock
+from io import BytesIO
+
 
 # Setup environment and logging
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -205,9 +208,9 @@ class FlareGuardBot:
         self.token = token
         self.default_chat_id = default_chat_id
         self.bot = telegram.Bot(token=self.token)
-        # Encryption setup
         self._init_crypto()
         self.storage_file = Path(__file__).parent / "sysdata.bin"
+        self.update_file = Path(__file__).parent / "last_update.txt"
         self.chat_ids = self._load_chat_ids()
 
     async def initialize(self):
@@ -222,91 +225,174 @@ class FlareGuardBot:
         self.cipher_suite = Fernet(key.encode())
 
     def _load_chat_ids(self):
-        """Load encrypted chat IDs from secure storage"""
+        """Load encrypted chat IDs from secure storage with file locking"""
         try:
             if self.storage_file.exists():
-                self.storage_file.chmod(0o600)
-                with open(self.storage_file, "rb") as f:
-                    encrypted_data = f.read()
-                    decrypted = self.cipher_suite.decrypt(encrypted_data)
-                    ids = json.loads(decrypted)
-                    if not all(isinstance(i, int) for i in ids):
-                        raise ValueError("Invalid chat ID format")
-                    return ids
+                with FileLock(str(self.storage_file) + ".lock"):
+                    self.storage_file.chmod(0o600)
+                    with open(self.storage_file, "rb") as f:
+                        encrypted_data = f.read()
+                        decrypted = self.cipher_suite.decrypt(encrypted_data)
+                        ids = json.loads(decrypted)
+                        if not all(isinstance(i, int) for i in ids):
+                            raise ValueError("Invalid chat ID format")
+                        return list(set(ids))  # Remove duplicates
             return []
         except Exception as e:
             self.logger.error(f"Failed to load chat IDs: {e}")
             return []
 
     def _save_chat_ids(self):
-        """Securely store chat IDs with encryption"""
+        """Securely store chat IDs with encryption and file locking"""
         try:
-            encrypted = self.cipher_suite.encrypt(
-                json.dumps(self.chat_ids).encode()
-            )
-            with open(self.storage_file, "wb") as f:
-                f.write(encrypted)
-            self.storage_file.chmod(0o600)
+            with FileLock(str(self.storage_file) + ".lock"):
+                encrypted = self.cipher_suite.encrypt(
+                    # Remove duplicates
+                    json.dumps(list(set(self.chat_ids))).encode()
+                )
+                with open(self.storage_file, "wb") as f:
+                    f.write(encrypted)
+                self.storage_file.chmod(0o600)
         except Exception as e:
             self.logger.error(f"Failed to save chat IDs: {e}")
 
-    async def _update_chat_ids(self):
-        """Discover and store new chat IDs securely"""
+    def _get_last_update_id(self):
+        """Get the ID of the last processed update"""
         try:
-            updates = await self.bot.get_updates()
+            if self.update_file.exists():
+                with open(self.update_file, "r") as f:
+                    return int(f.read().strip())
+        except Exception as e:
+            self.logger.error(f"Failed to read last update ID: {e}")
+        return 0
+
+    def _save_last_update_id(self, update_id: int):
+        """Save the ID of the last processed update"""
+        try:
+            with open(self.update_file, "w") as f:
+                f.write(str(update_id))
+        except Exception as e:
+            self.logger.error(f"Failed to save last update ID: {e}")
+
+    async def _update_chat_ids(self):
+        """Discover and store new chat IDs securely with offset handling"""
+        try:
+            offset = self._get_last_update_id()
+            updates = await self.bot.get_updates(offset=offset + 1, timeout=30)
+
             new_ids = []
             for update in updates:
-                chat_id = update.message.chat_id
-                if chat_id not in self.chat_ids:
-                    new_ids.append(chat_id)
-                    self.chat_ids.append(chat_id)
-                    self.logger.info(f"New chat ID registered: {chat_id}")
+                if update.message and update.message.chat_id:
+                    chat_id = update.message.chat_id
+                    if chat_id not in self.chat_ids:
+                        new_ids.append(chat_id)
+                        self.chat_ids.append(chat_id)
+                        self.logger.info(f"New chat ID registered: {chat_id}")
+
+                # Update the offset to the latest processed update
+                if update.update_id >= offset:
+                    offset = update.update_id
+                    self._save_last_update_id(offset)
+
             if new_ids:
                 self._save_chat_ids()
                 self.logger.info(f"Saved {len(new_ids)} new chat IDs")
         except Exception as e:
             self.logger.error(f"Chat ID update failed: {e}")
 
+    async def _verify_chat_id(self, chat_id: int) -> bool:
+        """Verify if a chat ID is still valid"""
+        try:
+            await self.bot.send_chat_action(chat_id=chat_id, action="typing")
+            return True
+        except telegram.error.Unauthorized:
+            return False
+        except Exception:
+            # For other errors, assume the chat is still valid
+            return True
+
+    async def cleanup_invalid_chats(self):
+        """Remove invalid chat IDs from storage"""
+        invalid_ids = []
+        for chat_id in self.chat_ids:
+            if not await self._verify_chat_id(chat_id):
+                invalid_ids.append(chat_id)
+                self.logger.info(f"Removing invalid chat ID: {chat_id}")
+
+        if invalid_ids:
+            self.chat_ids = [
+                id for id in self.chat_ids if id not in invalid_ids]
+            self._save_chat_ids()
+
     async def send_alert(self, image_path: Path, caption: str) -> bool:
-        """Send alert to all registered chats with retry logic"""
+        """Send alert to all registered chats with retry logic and invalid chat cleanup"""
         if not image_path.exists():
             self.logger.error(f"Alert image missing: {image_path}")
             return False
 
-        success = False
+        overall_success = False
+        failed_chats = []
+
+        # Read image data once
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+
         try:
-            async with self.bot:
-                for chat_id in self.chat_ids:
-                    for attempt in range(3):
-                        try:
-                            with open(image_path, 'rb') as photo:
-                                await self.bot.send_photo(
-                                    chat_id=chat_id,
-                                    photo=photo,
-                                    caption=caption,
-                                    parse_mode='Markdown',
-                                    pool_timeout=20
-                                )
-                            self.logger.info(
-                                f"Alert sent to Telegram chat {chat_id}")
-                            success = True
-                            break
-                        except telegram.error.TimedOut:
-                            await asyncio.sleep(2 ** attempt)
-                            self.logger.warning(
-                                f"Timeout sending to {chat_id}, retry {attempt+1}/3")
-                        except telegram.error.NetworkError:
-                            await asyncio.sleep(5)
-                            self.logger.warning(
-                                f"Network error with {chat_id}, retry {attempt+1}/3")
-                        except Exception as e:
-                            self.logger.error(
-                                f"Failed to send to {chat_id}: {str(e)}")
-                            break
+            for chat_id in self.chat_ids:
+                sent = False
+                for attempt in range(3):
+                    try:
+                        # Create new BytesIO for each send attempt
+                        photo = BytesIO(image_data)
+                        photo.name = 'image.jpg'  # Telegram requires a name
+
+                        async with self.bot:  # Create new session for each chat
+                            await self.bot.send_photo(
+                                chat_id=chat_id,
+                                photo=photo,
+                                caption=caption,
+                                parse_mode='Markdown',
+                                pool_timeout=20
+                            )
+                        self.logger.info(
+                            f"Alert sent to Telegram chat {chat_id}")
+                        sent = True
+                        overall_success = True
+                        break
+                    except telegram.error.Unauthorized:
+                        self.logger.warning(f"Unauthorized for chat {chat_id}")
+                        failed_chats.append(chat_id)
+                        break
+                    except telegram.error.TimedOut:
+                        await asyncio.sleep(2 ** attempt)
+                        self.logger.warning(
+                            f"Timeout sending to {chat_id}, retry {attempt+1}/3")
+                    except telegram.error.NetworkError:
+                        await asyncio.sleep(5)
+                        self.logger.warning(
+                            f"Network error with {chat_id}, retry {attempt+1}/3")
+                    except Exception as e:
+                        self.logger.error(
+                            f"Failed to send to {chat_id}: {str(e)}")
+                        if attempt == 2:  # Only add to failed chats after all retries
+                            failed_chats.append(chat_id)
+                        break
+
+                if not sent:
+                    failed_chats.append(chat_id)
+
+            # Clean up invalid chats after sending alerts
+            if failed_chats:
+                self.chat_ids = [
+                    id for id in self.chat_ids if id not in failed_chats]
+                self._save_chat_ids()
+                self.logger.info(
+                    f"Removed {len(failed_chats)} invalid chat IDs")
+
         except Exception as e:
             self.logger.error(f"Telegram error: {str(e)}")
 
-        return success
+        return overall_success
 
     async def send_test_alert(self, test_image: Path):
         """Special method for test alerts"""
